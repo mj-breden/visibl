@@ -36,6 +36,7 @@ load-cell pedal can be added later without touching the simulation.
 | Variable brightness | Lamp brightness |
 | Variable lit area | Number of lit bars in each lamp (1-4) |
 | Variable flash rate | Flash frequency (1-8 Hz) |
+| Centre-out light bar | One full-width LED bar (about half the trunk height) **replaces** the regular brake lights, including the third lamp. It fills from the centre outward in proportion to braking severity (decel / 8 m/s², minimum 12%). At lock-up (decel >= 8 m/s²) the centre flashes a white strobe at 10 Hz. Like the other styles it shows a dim running light at dusk and night. |
 
 ## Scene
 
@@ -46,7 +47,8 @@ dim running light at dusk and night. Paint colour is fixed per vehicle, and the
 lead car does not pitch when braking, so the lamps are the only braking cue.
 
 To preview a frozen braking scene (handy for screenshots), add query parameters:
-`index.html?demo=1&style=intensity&vehicle=pickup&env=night&decel=8&gap=10`
+`index.html?demo=1&style=bar&vehicle=pickup&env=night&decel=8&gap=10`
+(add `&perf=1` to show average draw time per frame in the page title).
 
 ## What is measured per trial
 

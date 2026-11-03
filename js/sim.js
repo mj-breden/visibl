@@ -12,6 +12,7 @@ const CONFIG = {
   reactionThreshold: 0.05, // pedal fraction counted as "reacted"
   waitMin: 3, waitMax: 7,  // s of steady cruising before the lead brakes
   decelChoices: [2, 4, 6, 8], // m/s^2 lead braking severity, picked at random
+  lockupDecel: 8,      // m/s^2 at or above this the lead is treated as "locked up" (full emergency stop)
   resetDelay: 1.0,     // s after the lead is back at cruise before the trial ends
 };
 
@@ -20,18 +21,24 @@ const STYLES = {
   intensity: 'Variable brightness',
   size:      'Variable lit area',
   flash:     'Variable flash rate',
+  bar:       'Centre-out light bar + lock-up strobe',
 };
 
 // What the lead car's lamps look like for a given style and braking severity.
-// Returns { lit, brightness 0..1, segments 0..4, flashHz }.
+// Returns { lit, brightness 0..1, segments 0..4, flashHz, barFrac 0..1, strobeHz }.
+// barFrac is how far the light bar has grown from the centre (0 = no bar); strobeHz > 0
+// means the white centre strobe is active. Only the 'bar' style uses those two.
 function lampState(style, decel, braking) {
-  if (!braking) return { lit: false, brightness: 0, segments: 0, flashHz: 0 };
+  const off = { lit: false, brightness: 0, segments: 0, flashHz: 0, barFrac: 0, strobeHz: 0 };
+  if (!braking) return off;
   const sev = Math.min(1, decel / 8); // 0..1
+  const on = { ...off, lit: true, brightness: 1, segments: 4 };
   switch (style) {
-    case 'intensity': return { lit: true, brightness: 0.3 + 0.7 * sev, segments: 4, flashHz: 0 };
-    case 'size':      return { lit: true, brightness: 1, segments: Math.max(1, Math.ceil(sev * 4)), flashHz: 0 };
-    case 'flash':     return { lit: true, brightness: 1, segments: 4, flashHz: 1 + 7 * sev };
-    default:          return { lit: true, brightness: 1, segments: 4, flashHz: 0 };
+    case 'intensity': return { ...on, brightness: 0.3 + 0.7 * sev };
+    case 'size':      return { ...on, segments: Math.max(1, Math.ceil(sev * 4)) };
+    case 'flash':     return { ...on, flashHz: 1 + 7 * sev };
+    case 'bar':       return { ...on, barFrac: Math.max(0.12, sev), strobeHz: decel >= CONFIG.lockupDecel ? 10 : 0 };
+    default:          return on;
   }
 }
 
@@ -65,6 +72,8 @@ class Sim {
   lamps(timeNow) {
     const l = lampState(this.style, this.leadDecel, this.leadBraking);
     if (l.flashHz > 0) l.lit = Math.floor(timeNow * l.flashHz * 2) % 2 === 0;
+    l.barStyle = this.style === 'bar'; // the bar housing is fitted (and visible when dark) only in this style
+    l.strobeOn = l.strobeHz > 0 && Math.floor(timeNow * l.strobeHz * 2) % 2 === 0;
     return l;
   }
 

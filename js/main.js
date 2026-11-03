@@ -29,6 +29,7 @@ envSel.addEventListener('change', () => { view.env = envSel.value; envSel.blur()
 // ?demo=1&style=intensity&vehicle=pickup&env=night&decel=8 freezes a braking scene (for screenshots)
 const params = new URLSearchParams(location.search);
 let frozen = false;
+const perf = { n: 0, ms: 0 };
 if (params.has('demo')) {
   if (STYLES[params.get('style')]) { sim.style = params.get('style'); styleSel.value = sim.style; }
   if (VEHICLES[params.get('vehicle')]) { vehicleSel.value = params.get('vehicle'); pickVehicle(); }
@@ -87,8 +88,13 @@ function frame(nowMs) {
       updateStats();
     }
   }
+  const t0 = performance.now();
   drawScene(ctx, sim, frozen ? 7 : nowMs / 1000, view);
   drawHud(ctx, sim, pedal, input.source);
+  if (params.has('perf')) { // ?perf=1 shows the average draw time per frame in the page title
+    perf.n++; perf.ms += performance.now() - t0;
+    document.title = `draw ${(perf.ms / perf.n).toFixed(1)} ms/frame (${perf.n} frames)`;
+  }
   requestAnimationFrame(frame);
 }
 updateStats();

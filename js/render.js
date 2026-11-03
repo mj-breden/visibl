@@ -361,9 +361,56 @@ function drawBloom(ctx, lampSpecs) {
   // red wash on the tarmac behind the vehicle
   ctx.save(); ctx.scale(1, 0.16);
   const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, 2.6);
-  const a = Math.min(0.5, 0.22 * gain * lamps.segments / 4 * (V.env.k < 1 ? 1.4 : 0.8));
+  const lit = lamps.barStyle ? lamps.barFrac : lamps.segments / 4; // how much of the light output is on
+  const a = Math.min(0.5, 0.22 * gain * lit * (V.env.k < 1 ? 1.4 : 0.8));
   grd.addColorStop(0, `rgba(255,30,20,${a})`); grd.addColorStop(1, 'rgba(255,0,0,0)');
   ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, 7); ctx.fill(); ctx.restore();
+  ctx.restore();
+}
+
+// Full-width light bar. In the 'bar' style it fills outward from the centre as braking gets
+// harder; at lock-up the centre flashes a white strobe. B = { y, h, hw } (centre-symmetric).
+function drawBar(ctx, B) {
+  const { y, h, hw } = B, lamps = V.lamps, f = lamps.barFrac;
+  const r = Math.min(0.06, h * 0.4);
+  ctx.fillStyle = C(18, 8, 8); ctx.beginPath(); ctx.roundRect(-hw - 0.015, y - 0.015, hw * 2 + 0.03, h + 0.03, r + 0.015); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.roundRect(-hw, y, hw * 2, h, r); ctx.clip();
+  ctx.fillStyle = C(88, 10, 15); ctx.fillRect(-hw, y, hw * 2, h); // unlit lens
+  if (V.env.running > 0) { ctx.fillStyle = C(190, 16, 22, V.env.running); ctx.fillRect(-hw, y, hw * 2, h); } // running light
+  if (lamps.lit && f > 0) {
+    const len = f * hw, g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, 'rgba(215,18,24,1)'); g.addColorStop(0.5, 'rgba(255,85,62,1)'); g.addColorStop(1, 'rgba(200,14,20,1)');
+    ctx.fillStyle = g; ctx.fillRect(-len, y, len * 2, h);
+    ctx.fillStyle = 'rgba(255,236,226,0.85)'; // LED dot grid
+    const rows = Math.max(1, Math.round(h / 0.05));
+    for (let j = 0; j < rows; j++) for (let x = -len + 0.025; x < len; x += 0.05) {
+      ctx.beginPath(); ctx.arc(x, y + h * (j + 0.5) / rows, 0.011, 0, 7); ctx.fill();
+    }
+    if (lamps.strobeOn) {
+      const sg = ctx.createLinearGradient(-0.2, 0, 0.2, 0);
+      sg.addColorStop(0, 'rgba(255,255,255,0.7)'); sg.addColorStop(0.3, 'rgba(255,255,255,1)');
+      sg.addColorStop(0.7, 'rgba(255,255,255,1)'); sg.addColorStop(1, 'rgba(255,255,255,0.7)');
+      ctx.fillStyle = sg; ctx.fillRect(-0.2, y, 0.4, h);
+    }
+  }
+  const gl = ctx.createLinearGradient(0, y + h, 0, y); gl.addColorStop(0, 'rgba(255,255,255,0.2)'); gl.addColorStop(0.5, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gl; ctx.fillRect(-hw, y, hw * 2, h);
+  ctx.restore();
+}
+
+function drawBarGlow(ctx, B) {
+  const lamps = V.lamps; if (!lamps.lit || !lamps.barFrac) return;
+  const gain = V.env.glow, s = V.s, len = lamps.barFrac * B.hw, cy = B.y + B.h / 2;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  ctx.save(); ctx.translate(0, cy); ctx.scale(1, 0.25 + B.h * 1.2);
+  const R = len + Math.max(0.3, 10 / s), g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+  g.addColorStop(0, `rgba(255,55,38,${Math.min(0.55, 0.32 * gain)})`); g.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill(); ctx.restore();
+  if (lamps.strobeOn) {
+    const r = Math.max(0.55, 20 / s), w = ctx.createRadialGradient(0, cy, 0, 0, cy, r);
+    w.addColorStop(0, `rgba(255,255,255,${Math.min(0.95, 0.5 + 0.3 * gain)})`); w.addColorStop(0.35, 'rgba(255,225,215,0.3)'); w.addColorStop(1, 'rgba(255,200,200,0)');
+    ctx.fillStyle = w; ctx.beginPath(); ctx.arc(0, cy, r, 0, 7); ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -389,10 +436,12 @@ function drawVehicle(ctx, type, env, lamps, cx, gy, s) {
   else tail = drawPickup(ctx, paint);
 
   for (const L of tail.sides) { drawLamp(ctx, L, false); drawLamp(ctx, L, true); }
-  const hm = tail.high; drawLamp(ctx, hm, false);
+  const hm = tail.high; if (hm) drawLamp(ctx, hm, false);
+  if (tail.bar) drawBar(ctx, tail.bar);
   drawBloom(ctx, tail.sides);
+  if (tail.bar) drawBarGlow(ctx, tail.bar);
   // third lamp bloom (centre, single)
-  if (lamps.lit) {
+  if (hm && lamps.lit) {
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const px = 0, py = hm.b0 + (hm.b1 - hm.b0) / 2, r = Math.max(0.22, 9 / s), g = ctx.createRadialGradient(px, py, 0, px, py, r);
     g.addColorStop(0, `rgba(255,70,45,${Math.min(0.6, 0.4 * env.glow * lamps.brightness)})`); g.addColorStop(1, 'rgba(255,0,0,0)');
@@ -420,12 +469,15 @@ function drawSedan(ctx, paint) {
   chrome(ctx, -0.45, 0.37, 0.055, 0.032); chrome(ctx, 0.45, 0.37, 0.055, 0.032);
   ctx.fillStyle = C(140, 10, 14); for (const s of [-1, 1]) ctx.fillRect(s * 0.72 - 0.05, 0.42, 0.1, 0.04);
   drawPlate(ctx, 0.55, 0.52, 0.12);
-  chrome(ctx, 0, 0.86, 0.07, 0.035);
+  const bar = V.lamps.barStyle;
+  chrome(ctx, 0, bar ? 0.94 : 0.86, 0.07, 0.035);
   const side = { axis: 'x', a0: 0.36, a1: 0.94, b0: 0.73, b1: 0.98, path: c => {
     c.moveTo(0.36, 0.78); c.lineTo(0.36, 0.9); c.quadraticCurveTo(0.7, 0.975, 0.88, 0.965);
     c.quadraticCurveTo(0.945, 0.9, 0.93, 0.77); c.quadraticCurveTo(0.65, 0.735, 0.36, 0.78); c.closePath();
   } };
-  return { sides: [side], high: chmsl(ctx, 0, 1.025, 0.46, 0.045) };
+  // bar style: one full-width bar (about half the trunk height) replaces all regular brake lights
+  return bar ? { sides: [], high: null, bar: { y: 0.7, h: 0.18, hw: 0.86 } }
+             : { sides: [side], high: chmsl(ctx, 0, 1.025, 0.46, 0.045) };
 }
 
 function drawSuv(ctx, paint) {
@@ -440,12 +492,14 @@ function drawSuv(ctx, paint) {
   seam(ctx, 0.62, 0.95);
   ctx.fillStyle = C(18, 18, 20); ctx.beginPath(); ctx.roundRect(-0.74, 0.35, 1.48, 0.17, 0.04); ctx.fill(); // bumper insert
   chrome(ctx, -0.5, 0.4, 0.07, 0.032); chrome(ctx, 0.5, 0.4, 0.07, 0.032);
-  drawPlate(ctx, 0.76, 0.52, 0.12); chrome(ctx, 0, 1.2, 0.085, 0.04);
+  const bar = V.lamps.barStyle;
+  drawPlate(ctx, bar ? 0.66 : 0.76, 0.52, 0.12); chrome(ctx, 0, 1.2, 0.085, 0.04);
   const side = { axis: 'y', a0: 0.82, a1: 1.5, b0: 0.76, b1: 0.95, path: c => {
     c.moveTo(0.76, 0.84); c.lineTo(0.95, 0.82); c.quadraticCurveTo(0.96, 1.2, 0.9, 1.5);
     c.lineTo(0.8, 1.5); c.quadraticCurveTo(0.76, 1.2, 0.76, 0.84); c.closePath();
   } };
-  return { sides: [side], high: chmsl(ctx, 0, 1.655, 0.4, 0.04) };
+  return bar ? { sides: [], high: null, bar: { y: 0.84, h: 0.19, hw: 0.9 } }
+             : { sides: [side], high: chmsl(ctx, 0, 1.655, 0.4, 0.04) };
 }
 
 function drawPickup(ctx, paint) {
@@ -464,12 +518,14 @@ function drawPickup(ctx, paint) {
   const bg = ctx.createLinearGradient(0, 0.3, 0, 0.58); bg.addColorStop(0, C(70, 72, 76)); bg.addColorStop(0.5, C(215, 218, 222)); bg.addColorStop(1, C(110, 112, 118));
   ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(-1.0, 0.32, 2.0, 0.24, 0.05); ctx.fill();
   ctx.fillStyle = C(16, 16, 18); ctx.fillRect(-0.12, 0.2, 0.24, 0.13); // hitch receiver
-  drawPlate(ctx, 0.66, 0.52, 0.12);
-  ctx.fillStyle = C(20, 20, 22); ctx.beginPath(); ctx.roundRect(-0.14, 1.02, 0.28, 0.05, 0.02); ctx.fill(); // handle
+  const bar = V.lamps.barStyle;
+  drawPlate(ctx, bar ? 0.4 : 0.66, 0.52, 0.12); // bar style leaves the tailgate to the bar, so the plate sits on the bumper
+  ctx.fillStyle = C(20, 20, 22); ctx.beginPath(); ctx.roundRect(-0.14, bar ? 1.07 : 1.02, 0.28, 0.05, 0.02); ctx.fill(); // handle
   const side = { axis: 'y', a0: 0.66, a1: 1.12, b0: 0.8, b1: 0.97, path: c => {
     c.moveTo(0.8, 0.66); c.lineTo(0.97, 0.66); c.lineTo(0.97, 1.12); c.lineTo(0.8, 1.12); c.closePath();
   } };
-  return { sides: [side], high: chmsl(ctx, 0, 1.915, 0.36, 0.04) };
+  return bar ? { sides: [], high: null, bar: { y: 0.72, h: 0.3, hw: 0.9 } }
+             : { sides: [side], high: chmsl(ctx, 0, 1.915, 0.36, 0.04) };
 }
 
 // ---------------------------------------------------------------- HUD
