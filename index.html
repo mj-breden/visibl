@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VISIBL: Variable IntenSIty Brake Lights</title>
+<style>
+  body { margin: 0; background: #181a1f; color: #eee; font-family: system-ui, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 12px; }
+  h1 { font-size: 20px; margin: 4px 0 10px; }
+  .stage { position: relative; }
+  canvas { width: 100%; height: auto; display: block; border-radius: 6px; }
+  #overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+             justify-content: center; background: rgba(0,0,0,.7); text-align: center; padding: 20px; border-radius: 6px; }
+  #overlay[hidden] { display: none; }
+  #toast { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.7);
+           padding: 6px 14px; border-radius: 4px; opacity: 0; transition: opacity .3s; }
+  button, select { font-size: 15px; padding: 6px 12px; }
+  .bar { display: flex; gap: 12px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid #333; padding: 4px 8px; text-align: left; }
+</style>
+</head>
+<body>
+<main>
+  <h1>VISIBL <small style="font-weight:normal;color:#999">Variable IntenSIty Brake Lights, prototype</small></h1>
+  <div class="stage">
+    <canvas id="scene" width="900" height="540"></canvas>
+    <div id="toast"></div>
+    <div id="overlay">
+      <h2>Follow the car ahead</h2>
+      <p>Both cars cruise at the same speed. When the car ahead brakes, brake to keep a safe gap.<br>
+         Brake with the <b>gamepad right trigger</b> (squeeze harder to brake harder),<br>
+         or hold <b>Space</b> / <b>Down arrow</b> / <b>mouse button</b> (pressure ramps up while held).</p>
+      <button id="start">Start</button>
+    </div>
+  </div>
+  <div class="bar">
+    <label>Brake light style: <select id="style"></select></label>
+    <button id="csv">Download CSV</button>
+  </div>
+  <table id="stats">
+    <thead><tr><th>Style</th><th>Trials</th><th>Mean reaction</th><th>Collisions</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</main>
+<script src="js/sim.js"></script>
+<script src="js/input.js"></script>
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
