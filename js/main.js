@@ -62,7 +62,7 @@ function updateStats() {
 }
 
 function downloadCsv() {
-  const head = ['trial', 'style', 'leadDecel', 'reactionS', 'peakPedal', 'minGapM', 'collision'];
+  const head = ['trial', 'style', 'leadDecel', 'speedDrop', 'holdS', 'reactionS', 'peakPedal', 'minGapM', 'collision'];
   const lines = [head.join(',')].concat(sim.trials.map(r => head.map(k => r[k] ?? '').join(',')));
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));

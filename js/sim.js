@@ -4,8 +4,9 @@
 const CONFIG = {
   cruise: 25,          // m/s (~56 mph) both cars hold this speed
   startGap: 32,        // m bumper-to-bumper at the start of each trial
-  leadLowSpeed: 8,     // m/s the lead car brakes down to
-  leadHold: 1.5,       // s the lead stays slow before recovering
+  speedDrop: [3, 21],  // m/s the lead sheds in a braking event, random per trial (cruise 25 -> 22..4 m/s)
+  minBrakeS: 0.8,      // shortest braking event (s), so the lamps stay on long enough to see
+  holdRange: [0.5, 3], // s the lead stays slow before recovering, random per trial
   leadRecover: 2.5,    // m/s^2 lead acceleration back to cruise
   playerAccel: 2.5,    // m/s^2 when the brake is released
   playerMaxDecel: 9,   // m/s^2 at 100% pedal
@@ -60,6 +61,11 @@ class Sim {
     this.playerSpeed = CONFIG.cruise;
     this.gap = CONFIG.startGap;
     this.leadDecel = CONFIG.decelChoices[Math.floor(this.rng() * CONFIG.decelChoices.length)];
+    // how much speed this event sheds: at least minBrakeS of braking at the chosen severity
+    const lo = Math.max(CONFIG.speedDrop[0], this.leadDecel * CONFIG.minBrakeS), hi = CONFIG.speedDrop[1];
+    this.speedDrop = lo + this.rng() * (hi - lo);
+    this.leadTarget = CONFIG.cruise - this.speedDrop;
+    this.leadHold = CONFIG.holdRange[0] + this.rng() * (CONFIG.holdRange[1] - CONFIG.holdRange[0]);
     this.onsetT = null;           // time lead brake lights came on
     this.reactionT = null;        // time pedal crossed threshold
     this.peakPedal = 0;
@@ -88,11 +94,11 @@ class Sim {
         if (this.phaseT >= this.waitFor) { this.phase = 'braking'; this.phaseT = 0; this.onsetT = this.t; }
         break;
       case 'braking':
-        this.leadSpeed = Math.max(CONFIG.leadLowSpeed, this.leadSpeed - this.leadDecel * dt);
-        if (this.leadSpeed <= CONFIG.leadLowSpeed) { this.phase = 'hold'; this.phaseT = 0; }
+        this.leadSpeed = Math.max(this.leadTarget, this.leadSpeed - this.leadDecel * dt);
+        if (this.leadSpeed <= this.leadTarget) { this.phase = 'hold'; this.phaseT = 0; }
         break;
       case 'hold':
-        if (this.phaseT >= CONFIG.leadHold) { this.phase = 'recover'; this.phaseT = 0; }
+        if (this.phaseT >= this.leadHold) { this.phase = 'recover'; this.phaseT = 0; }
         break;
       case 'recover':
         this.leadSpeed = Math.min(CONFIG.cruise, this.leadSpeed + CONFIG.leadRecover * dt);
@@ -122,6 +128,8 @@ class Sim {
       trial: this.trials.length + 1,
       style: this.style,
       leadDecel: this.leadDecel,
+      speedDrop: +this.speedDrop.toFixed(1),
+      holdS: +this.leadHold.toFixed(2),
       reactionS: this.reactionT,
       peakPedal: +this.peakPedal.toFixed(3),
       minGapM: +this.minGap.toFixed(2),

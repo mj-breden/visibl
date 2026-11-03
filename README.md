@@ -50,6 +50,18 @@ To preview a frozen braking scene (handy for screenshots), add query parameters:
 `index.html?demo=1&style=bar&vehicle=pickup&env=night&decel=8&gap=10`
 (add `&perf=1` to show average draw time per frame in the page title).
 
+## Braking events
+
+Each trial draws its own braking event, so the lead car does not always do the same thing:
+
+- **Severity:** 2, 4, 6 or 8 m/s² (picked at random)
+- **Speed shed:** 3 to 21 m/s (about 7 to 47 mph), from a light tap to nearly stopping.
+  The event always lasts at least 0.8 s so the lamps are on long enough to see.
+- **Hold:** the lead stays slow for 0.5 to 3 s, then accelerates back to cruise.
+
+These ranges live in `CONFIG` in `js/sim.js`. Each trial's drop and hold are saved in the CSV
+(`speedDrop`, `holdS`) so they can be used as covariates in analysis.
+
 ## What is measured per trial
 
 Reaction time (lead lights on to pedal above 5%), peak pedal pressure, minimum
