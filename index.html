@@ -6,7 +6,7 @@
 <title>VISIBL: Variable IntenSIty Brake Lights</title>
 <style>
   body { margin: 0; background: #181a1f; color: #eee; font-family: system-ui, sans-serif; }
-  main { max-width: 920px; margin: 0 auto; padding: 12px; }
+  main { max-width: 1280px; margin: 0 auto; padding: 12px; }
   h1 { font-size: 20px; margin: 4px 0 10px; }
   .stage { position: relative; }
   canvas { width: 100%; height: auto; display: block; border-radius: 6px; }
@@ -25,7 +25,7 @@
 <main>
   <h1>VISIBL <small style="font-weight:normal;color:#999">Variable IntenSIty Brake Lights, prototype</small></h1>
   <div class="stage">
-    <canvas id="scene" width="900" height="540"></canvas>
+    <canvas id="scene" width="1280" height="720"></canvas>
     <div id="toast"></div>
     <div id="overlay">
       <h2>Follow the car ahead</h2>
@@ -37,6 +37,8 @@
   </div>
   <div class="bar">
     <label>Brake light style: <select id="style"></select></label>
+    <label>Vehicle: <select id="vehicle"></select></label>
+    <label>Lighting: <select id="env"></select></label>
     <button id="csv">Download CSV</button>
   </div>
   <table id="stats">

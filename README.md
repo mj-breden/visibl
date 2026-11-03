@@ -37,6 +37,17 @@ load-cell pedal can be added later without touching the simulation.
 | Variable lit area | Number of lit bars in each lamp (1-4) |
 | Variable flash rate | Flash frequency (1-8 Hz) |
 
+## Scene
+
+A driver's-eye view from inside a car. Pick the lead **vehicle** (sedan, SUV, pickup,
+or a random one each trial) and the **lighting** (day, dusk, night) from the
+dropdowns. Lamps are LED-style lenses with bloom, a red wash on the road, and a
+dim running light at dusk and night. Paint colour is fixed per vehicle, and the
+lead car does not pitch when braking, so the lamps are the only braking cue.
+
+To preview a frozen braking scene (handy for screenshots), add query parameters:
+`index.html?demo=1&style=intensity&vehicle=pickup&env=night&decel=8&gap=10`
+
 ## What is measured per trial
 
 Reaction time (lead lights on to pedal above 5%), peak pedal pressure, minimum

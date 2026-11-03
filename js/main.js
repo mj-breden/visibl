@@ -11,6 +11,34 @@ const styleSel = document.getElementById('style');
 for (const [k, label] of Object.entries(STYLES)) styleSel.add(new Option(label, k));
 styleSel.addEventListener('change', () => { sim.style = styleSel.value; sim.resetTrial(); styleSel.blur(); });
 
+// vehicle and lighting pickers; "random" draws a new vehicle for every trial
+const vehicleSel = document.getElementById('vehicle');
+for (const [k, v] of Object.entries(VEHICLES)) vehicleSel.add(new Option(v.label, k));
+vehicleSel.add(new Option('Random each trial', 'random'));
+const envSel = document.getElementById('env');
+for (const [k, v] of Object.entries(ENVS)) envSel.add(new Option(v.label, k));
+envSel.value = 'dusk';
+const view = { vehicle: 'sedan', env: 'dusk' };
+function pickVehicle() {
+  const names = Object.keys(VEHICLES);
+  view.vehicle = vehicleSel.value === 'random' ? names[Math.floor(Math.random() * names.length)] : vehicleSel.value;
+}
+vehicleSel.addEventListener('change', () => { pickVehicle(); vehicleSel.blur(); });
+envSel.addEventListener('change', () => { view.env = envSel.value; envSel.blur(); });
+
+// ?demo=1&style=intensity&vehicle=pickup&env=night&decel=8 freezes a braking scene (for screenshots)
+const params = new URLSearchParams(location.search);
+let frozen = false;
+if (params.has('demo')) {
+  if (STYLES[params.get('style')]) { sim.style = params.get('style'); styleSel.value = sim.style; }
+  if (VEHICLES[params.get('vehicle')]) { vehicleSel.value = params.get('vehicle'); pickVehicle(); }
+  if (ENVS[params.get('env')]) { view.env = params.get('env'); envSel.value = view.env; }
+  sim.leadDecel = +params.get('decel') || 6;
+  sim.phase = 'braking'; sim.phaseT = 0; sim.gap = +params.get('gap') || 14; sim.leadSpeed = 18;
+  sim.t = 5; sim.onsetT = 4; running = true; frozen = true;
+  document.getElementById('overlay').hidden = true;
+}
+
 document.getElementById('start').addEventListener('click', e => {
   running = true; document.getElementById('overlay').hidden = true; e.stopPropagation();
 });
@@ -49,17 +77,18 @@ function toast(msg) {
 function frame(nowMs) {
   const dt = Math.min(0.05, (nowMs - last) / 1000); last = nowMs;
   const pedal = input.read(dt);
-  if (running) {
+  if (running && !frozen) {
     sim.odo = (sim.odo || 0) + sim.playerSpeed * dt;
     const rec = sim.step(dt, pedal);
     if (rec) {
+      pickVehicle();
       toast(rec.collision ? 'COLLISION' :
         rec.reactionS === null ? 'No reaction' : `Reaction ${rec.reactionS.toFixed(3)} s, peak brake ${Math.round(rec.peakPedal * 100)}%`);
       updateStats();
     }
   }
-  drawScene(ctx, canvas.width, canvas.height, sim, nowMs / 1000);
-  drawHud(ctx, canvas.width, canvas.height, sim, pedal, input.source);
+  drawScene(ctx, sim, frozen ? 7 : nowMs / 1000, view);
+  drawHud(ctx, sim, pedal, input.source);
   requestAnimationFrame(frame);
 }
 updateStats();
